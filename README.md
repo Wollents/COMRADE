@@ -17,3 +17,6 @@ pygod == 0.3.1
 
 ## Usage
 python main.py --dataset cora --gama 0.6 --beta 0.8
+
+
+please make sure the diff is generated, if not please use the gdc() in aug.py to generate.
