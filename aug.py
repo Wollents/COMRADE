@@ -9,10 +9,8 @@ import scipy.io as sio
 # 这个是用于diffusion的图，输入是一个matrix，alpha=0.01， eps=0.001
 
 
-## 示例
 
-## diff=gdc(adj,alpha=0.01,eps=0.0001)
-## np.save('diff_A',diff)
+
 
 def gdc(A: sp.csr_matrix, alpha: float, eps: float):
     N = A.shape[0]
@@ -30,7 +28,7 @@ def gdc(A: sp.csr_matrix, alpha: float, eps: float):
 from utils import load_mat
 
 datasets = ['pubmed', 'Flickr']
-
+## 示例
 # for item in datasets:
 #     adj, features, labels, idx_train, idx_val, \
 #     idx_test, ano_label, str_ano_label, attr_ano_label = load_mat(item)
