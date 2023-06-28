@@ -23,7 +23,6 @@ please make sure the diff of a dataset is generated before running. If not pleas
 *For the rest of the datasets, please refer to the .sh files, and simply run:
 ```Bash
 chmod +x runEachDataset.sh
-
 ./runEachDataset.sh
 ```
 
