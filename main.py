@@ -37,7 +37,7 @@ def get_ground_truthDataset(dataset,cache=None):
     label = np.array(data.y)
     return adj, feat, label
 
-parser = argparse.ArgumentParser(description='''COMRADE:Community-Guided Contrastive Learning with
+parser = argparse.ArgumentParser(description='''CARD:Community-Guided Contrastive Learning with
                                                 Multi-Scale Reconstruction for Attributed Networks
                                                                                 Anomaly Detection''')
 parser.add_argument('--dataset', type=str, default='cora')
