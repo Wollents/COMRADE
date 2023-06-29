@@ -1,5 +1,5 @@
-# COMRADE
-this is the source code of COMRADE
+# CARD
+this is the source code of CARD
 ## Requirement
 python == 3.8.1
 
