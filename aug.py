@@ -7,7 +7,8 @@ import numpy as np
 import scipy.io as sio
 
 # 这个是用于diffusion的图，输入是一个matrix，alpha=0.01， eps=0.001
-
+# this is used for to generate diffusion view, which outputs a matrix.
+# NOTE the Line 31-38 that show how to generate a diffusion view.
 
 
 
@@ -29,6 +30,7 @@ from utils import load_mat
 
 datasets = ['pubmed', 'Flickr']
 ## 示例
+## NOTE Example
 # for item in datasets:
 #     adj, features, labels, idx_train, idx_val, \
 #     idx_test, ano_label, str_ano_label, attr_ano_label = load_mat(item)
@@ -42,7 +44,7 @@ def gen():
         adj  = data['Network'] if ('Network' in data) else data['A']
         print('generating dataset', datasets[i])
         diff = gdc(adj, alpha=0.01, eps=0.0001)
-        np.save('./diff_A_' + datasets[i], diff)
+        np.save('./diff/diff_A_' + datasets[i], diff)
         print('generating '+ datasets[i] + ' finished')
 
 
