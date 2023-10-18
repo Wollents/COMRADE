@@ -53,6 +53,7 @@ parser.add_argument('--readout', type=str, default='avg')
 parser.add_argument('--auc_test_rounds', type=int, default=150)
 parser.add_argument('--negsamp_ratio', type=int, default=1)
 parser.add_argument('--dropout', type=float, default=0.5)
+parser.add_argument('--earlystop', type=bool, default=True)
 parser.add_argument('--gama', type=float)
 parser.add_argument('--beta', type=float)
 parser.add_argument('--modelMode', type=str, default='gpu')
@@ -62,49 +63,29 @@ args = parser.parse_args()
 
 
 if args.lr is None:
-    if args.dataset in ['cora', 'citeseer', 'pubmed', 'Flickr', 'dblp', 'ACM','citation','Amazon','reddit','books']:
-        args.lr = 1e-3
-        if args.dataset == 'cora':
-            args.m = 5429
-        elif args.dataset == 'citeseer' or args.dataset == 'Flickr' or args.dataset == 'citation':
-            if args.dataset == 'citeseer':
-                args.m = 4732
-        elif args.dataset == 'pubmed' or args.dataset == 'dblp' or args.dataset == 'ACM':
-            if args.dataset == 'pubmed':
-                args.m = 44338
-                args.batch_size = 500
+    args.lr = 1e-3
 
 if args.num_epoch is None:
-    if args.dataset in ['cora', 'citeseer', 'pubmed', 'ACM','reddit','books']:
+    if args.dataset in ['cora', 'citeseer', 'pubmed', 'dblp', 'citation','reddit','books']:
         args.num_epoch = 100
-    elif args.dataset in ['Flickr']:
+    elif args.dataset in ['ACM','Flickr']:
         args.num_epoch = 400
-    elif args.dataset in ['dblp', 'citation']:
-        args.num_epoch = 80
 
-if args.dataset in ['books']:
-    args.batch_size = 300
 print("reading edgelist")
 normal_adj = load_edgelist('./edgelist/' + args.dataset + '.edgelist')
-if args.dataset == 'Flickr':
-    args.m = 239738
 
-if args.dataset == 'ACM':
-    args.m = 71980
-    args.batch_size = 500
+
 args.m = m_dic[args.dataset]
-
-
 
 k1 = np.sum(normal_adj, axis=1)
 k2 = k1.reshape(normal_adj.shape[0], 1)
 k1k2 = k1 * k2
 eij = k1k2 / (2 * args.m)
 B = np.array(normal_adj - eij)
-
+if args.dataset in ['ACM','pubmed']:
+    args.batch_size = 500
 batch_size = args.batch_size
 subgraph_size = args.subgraph_size
-
 print('Dataset: ', args.dataset)
 
 print(args.gama, args.beta)
@@ -148,20 +129,12 @@ c_features = features
 c_features = torch.FloatTensor(c_features)
 c_adj = adj.todense()
 c_adj = torch.FloatTensor(c_adj).to(device)
-
-if args.dataset in ['BlogCatalog','Flickr', 'ACM','Amazon','books']:
-    print("using order 2")
-    if args.dataset == 'ACM':
-        c_features = rand_prop(features=c_features, dropnode_rate=0.5, A=c_adj, order=5, cuda=1)
-    else:
-        c_features = rand_prop(features=c_features, dropnode_rate=0.2, A=c_adj, order=2, cuda=1)
-else:
-    c_features = rand_prop(features=c_features, dropnode_rate=0.5, A=c_adj, order=5, cuda=1)
+c_features = rand_prop(features=c_features, dropnode_rate=0.5, A=c_adj, order=5, cuda=1)
 
 c_features_pyg = adj_to_pyg_graph(c_features, c_adj)
 print('unleash the memory')
 c_features = c_features.cpu()
-torch.cuda.empty_cache()  # 释放现存
+torch.cuda.empty_cache()  # 释放显存
 
 adj = normalize_adj(adj)
 adj = (adj + sp.eye(adj.shape[0])).todense()
@@ -201,6 +174,7 @@ xent = nn.CrossEntropyLoss()
 cnt_wait = 0
 best = 1e9
 best_t = 0
+best_auc = 0
 batch_num = nb_nodes // batch_size + 1
 
 added_adj_zero_row = torch.zeros((nb_nodes, 1, subgraph_size))
@@ -337,7 +311,49 @@ with tqdm(total=args.num_epoch) as pbar:
 
             total_loss += loss
             p = p + 1
+        if args.earlystop:
+                with torch.no_grad():
+                    now1, logits,_ = model(bf, ba, raw, BA)
+                    now2, logits2, c_now,_ = model(bf, br, raw, BA, c_features.unsqueeze(0), adj)
+                    # c_now = c_now.to(device)
+                    # now2, logits2 = model(bf, br, raw)
+                    logits = torch.squeeze(logits)
+                    logits = torch.sigmoid(logits)
 
+                    logits2 = torch.squeeze(logits2)
+                    logits2 = torch.sigmoid(logits2)
+                scaler1 = MinMaxScaler()
+                scaler2 = MinMaxScaler()
+                scaler3 = MinMaxScaler()
+                    # 相当于就是说，前半部分是一个negative，后边部分是positive
+                ano_score1 = - (logits[:cur_batch_size] - logits[cur_batch_size:]).cpu().numpy()
+                ano_score2 = - (logits2[:cur_batch_size] - logits2[cur_batch_size:]).cpu().numpy()
+                    # ano_score3 = - (logits3[:cur_batch_size] - logits3[cur_batch_size:]).cpu().numpy()
+                    # 属性的重构误差
+                pdist = nn.PairwiseDistance(p=2)
+                score1 = (pdist(now1, raw[:, -1, :]) + pdist(now2, raw[:, -1, :])) / 2
+                score_global_re = pdist(c_now.to(device), raw_feature[0, :, :])
+                score_global_re = score_global_re.cpu().numpy()
+                score_global_re = scaler3.fit_transform(score_global_re.reshape(-1, 1)).reshape(-1)
+                score2 = (ano_score1 + ano_score2) / 2
+                score1 = score1.cpu().numpy()
+                ano_score_co = scaler1.fit_transform(score2.reshape(-1, 1)).reshape(-1)
+                score_re = scaler2.fit_transform(score1.reshape(-1, 1)).reshape(-1)
+                ano_scores = ano_score_co + args.gama * score_re
+                final_test_score = score_global_re
+                test_auc = roc_auc_score(ano_label, final_test_score)
+                print('previous auc is', best_auc)
+                print('test_auc is ', test_auc)
+                if test_auc > best_auc:
+                    best_auc = test_auc
+                else:
+                    pbar.update(1)
+                    cnt_wait += 1
+                    if cnt_wait > 200:
+                        break
+                    else:
+                        continue
+            
         mean_loss = total_loss
 
         if mean_loss < best:
@@ -366,7 +382,7 @@ multi_round_ano_score_global = np.zeros((args.auc_test_rounds, nb_nodes))
 kk = 0
 
 with tqdm(total=args.auc_test_rounds) as pbar_test:
-    pbar_test.set_description('Testing COMRADE')
+    pbar_test.set_description('EVALUTION CARD')
     for round in range(args.auc_test_rounds):
 
         all_idx = list(range(nb_nodes))
