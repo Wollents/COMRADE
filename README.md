@@ -1,4 +1,4 @@
-# CARD
+# CLoCK
 this is the source code of CLoCK
 ## Requirement
 python == 3.8.1
