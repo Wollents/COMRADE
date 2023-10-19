@@ -37,8 +37,8 @@ def get_ground_truthDataset(dataset,cache=None):
     label = np.array(data.y)
     return adj, feat, label
 
-parser = argparse.ArgumentParser(description='''CARD:Community-Guided Contrastive Learning with
-                                                Multi-Scale Reconstruction for Attributed Networks
+parser = argparse.ArgumentParser(description='''CLoCK:Community-Guided Contrastive Learning with
+                                                Anomaly-Aware Reconstruction for Attributed Networks
                                                                                 Anomaly Detection''')
 parser.add_argument('--dataset', type=str, default='cora')
 parser.add_argument('--lr', type=float)
@@ -382,7 +382,7 @@ multi_round_ano_score_global = np.zeros((args.auc_test_rounds, nb_nodes))
 kk = 0
 
 with tqdm(total=args.auc_test_rounds) as pbar_test:
-    pbar_test.set_description('EVALUTION CARD')
+    pbar_test.set_description('EVALUTION')
     for round in range(args.auc_test_rounds):
 
         all_idx = list(range(nb_nodes))
