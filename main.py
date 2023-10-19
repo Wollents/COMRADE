@@ -38,7 +38,7 @@ def get_ground_truthDataset(dataset,cache=None):
     return adj, feat, label
 
 parser = argparse.ArgumentParser(description='''CARD:Community-Guided Contrastive Learning with
-                                                Multi-Scale Reconstruction for Attributed Networks
+                                                Anomaly-Aware Reconstruction for Attributed Networks
                                                                                 Anomaly Detection''')
 parser.add_argument('--dataset', type=str, default='cora')
 parser.add_argument('--lr', type=float)
